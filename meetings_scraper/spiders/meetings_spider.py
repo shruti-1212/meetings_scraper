@@ -9,43 +9,31 @@ class MeetingsSpider(scrapy.Spider):
     def parse(self, response):
         for row in response.xpath("//table/tbody/tr"):
 
-            category_link = row.xpath("./td[3]/a")  
-            category = category_link.xpath("text()").get()
-            #condition to check if the document is present or not
-            if category:
-                date_match = re.search(r'(\w+ \d{1,2}, \d{4})', category)
-                formatted_date = None
-                if date_match:
-                    try:
-                        extracted_date = date_match.group(1)
-                        formatted_date = datetime.strptime(extracted_date, "%B %d, %Y").strftime("%Y-%m-%d")
-                    except ValueError:
-                        formatted_date = None
-                url = category_link.xpath("@href").get()
-                
-            else:
-                category = "other"
-                url = None
-            raw_date = row.xpath("./td[1]/text()").get()
-            meeting_title = row.xpath("./td[2]/text()").get()
-            
+            doc_links = row.xpath("./td[2]/a | ./td[3]/a")
+            if doc_links:
+                for doc_link in doc_links:
+                    doc_name = doc_link.xpath("text()").get()
 
-             # Convert date to yyyy-mm-dd format
-            formatted_date = None
-            if raw_date:
-                try:
-                    formatted_date = datetime.strptime(raw_date.strip(), "%m/%d/%Y").strftime("%Y-%m-%d")
-                except ValueError:
-                    formatted_date = raw_date.strip()  # Keep original if parsing fails
+                    #condition to check if the meeting document is present or not
+                    if doc_name:
+                        date = self.extract_date(doc_name)
+                        category = doc_name.split()[-1].strip()
+                        url = doc_link.xpath("@href").get()
 
-            yield {
-                "date":formatted_date,
-                "meeting_title": meeting_title.strip() if meeting_title else None,
-                "category": category.strip() if category else None,
-                "URL": response.urljoin(url) if url else None
-            }
+                        yield {
+                            "Date":date,
+                            "Meeting_title": None,
+                            "Category": category,
+                            "Url": url}
+                    else:
+                        self.logger.warning("No document link found in the row.")
 
-        # Follow pagination link to page 2
-        next_page = response.xpath("//a[text()='Next']/@href").get()
-        if next_page:
-            yield response.follow(next_page, self.parse)
+
+    def extract_date(self, doc_name):
+        raw_date = re.search(r'(\w+ \d{1,2}, \d{4})', doc_name)
+        formatted_date = None
+        if raw_date:
+            extracted_date = raw_date.group(1)
+            formatted_date = datetime.strptime(extracted_date, "%B %d, %Y").strftime("%Y-%m-%d")
+            return formatted_date
+
