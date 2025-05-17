@@ -1,6 +1,7 @@
 import scrapy
 from datetime import datetime
 import re
+from dateutil import parser
 
 class MeetingsSpider(scrapy.Spider):
     name = "meetings"
@@ -19,7 +20,7 @@ class MeetingsSpider(scrapy.Spider):
 
                             # Check if the document name exists
                             if doc_name:
-                                date = self.extract_date(doc_name)
+                                date = parser.parse(' '.join(doc_name.rsplit(' ')[:-1])).strftime('%Y-%m-%d')
                                 category = doc_name.split()[-1].strip() if doc_name.split() else "other"
                                 url = doc_link.xpath("@href").get()
                                 meeting_title = doc_name + " " + title if title else doc_name
@@ -38,20 +39,3 @@ class MeetingsSpider(scrapy.Spider):
 
         except Exception as e:
             self.logger.error(f"Error parsing response: {e}")
-
-    def extract_date(self, doc_name):
-        try:
-            raw_date = re.search(r'(\w+ \d{1,2}, \d{4})', doc_name)
-            if raw_date:
-                extracted_date = raw_date.group(1)
-                formatted_date = datetime.strptime(extracted_date, "%B %d, %Y").strftime("%Y-%m-%d")
-                return formatted_date
-            else:
-                self.logger.warning(f"No date found in document name: {doc_name}")
-                return None
-        except ValueError as e:
-            self.logger.error(f"Date format error: {e}")
-            return None
-        except Exception as e:
-            self.logger.error(f"Unexpected error in extract_date: {e}")
-            return None
