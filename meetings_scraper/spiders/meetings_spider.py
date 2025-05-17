@@ -9,7 +9,7 @@ class MeetingsSpider(scrapy.Spider):
 
     def parse(self, response):
         try:
-            title_raw = response.xpath('//*[@id="post-750"]/div/div[1]/div/div/div/div/div/div/div[1]/h1/text()').get()
+            title_raw = response.xpath('//div[@class="column2"]//h1/text()').get()
             title = title_raw.split("–")[1]
             for row in response.xpath("//table/tbody/tr"):
                 doc_links = row.xpath("./td[2]/a | ./td[3]/a | ./td[4]/a") 
